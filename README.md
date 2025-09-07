@@ -78,4 +78,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-**Design-IRL:** Turn your inspiration into reality—AI-powered, interactive, and endlessly creative.
+**Design-IRL:** Turn your inspiration into reality Your Pinterest board. Designed IRL.
