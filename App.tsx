@@ -5,6 +5,11 @@ import { analyzeImage, generateRoom, editImage, urlToBase64, virtualTryOn } from
 import PinCard from './components/PinCard';
 import LoadingSpinner from './components/LoadingSpinner';
 
+type GeneratedImage = {
+  base64: string;
+  mimeType: string;
+};
+
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.WELCOME);
   const [pathway, setPathway] = useState<'generate' | 'edit' | 'try-on' | null>(null);
@@ -19,7 +24,7 @@ const App: React.FC = () => {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null);
   const [roomDescription, setRoomDescription] = useState<string>('');
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [editPrompt, setEditPrompt] = useState<string>('');
   
   const [userImageForTryOn, setUserImageForTryOn] = useState<{ dataUrl: string; file: File } | null>(null);
@@ -30,6 +35,11 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [showInspirationTray, setShowInspirationTray] = useState(false);
+
+  const generatedImageUrl = useMemo(() => {
+    if (!generatedImage) return null;
+    return `data:${generatedImage.mimeType};base64,${generatedImage.base64}`;
+  }, [generatedImage]);
 
 
   const handleSearch = useCallback(async (loadMore = false) => {
@@ -160,7 +170,7 @@ const App: React.FC = () => {
     setError(null);
     try {
       const { base64, mimeType } = await urlToBase64(selectedPins[0].images.orig.url);
-      setGeneratedImage(`data:${mimeType};base64,${base64}`);
+      setGeneratedImage({ base64, mimeType });
       setAppState(AppState.EDITING);
     } catch (e: any) {
       setError("Failed to load image for editing. Please try again.");
@@ -193,8 +203,8 @@ const App: React.FC = () => {
     }, 3000); 
 
     try {
-      const imageBytes = await generateRoom(geminiApiKey, tasteProfile, roomDescription);
-      setGeneratedImage(`data:image/jpeg;base64,${imageBytes}`);
+      const imageResult = await generateRoom(geminiApiKey, tasteProfile, roomDescription);
+      setGeneratedImage(imageResult);
       setAppState(AppState.EDITING);
     } catch (e: any) {
       setError('Failed to generate mockup. Please try again.');
@@ -227,9 +237,8 @@ const App: React.FC = () => {
     }, 2500);
 
     try {
-      const currentImage = generatedImage.split(',')[1];
-      const newImageBytes = await editImage(geminiApiKey, currentImage, editPrompt);
-      setGeneratedImage(`data:image/jpeg;base64,${newImageBytes}`);
+      const newImageResult = await editImage(geminiApiKey, generatedImage, editPrompt);
+      setGeneratedImage(newImageResult);
       setEditPrompt('');
     } catch (e: any) {
       setError('Failed to edit image. Please try again.');
@@ -276,13 +285,13 @@ const App: React.FC = () => {
       );
       
       setLoadingMessage("Applying styles with AI...");
-      const newImageBytes = await virtualTryOn(
+      const newImageResult = await virtualTryOn(
         geminiApiKey,
         { base64: userImageBase64, mimeType: userImageMimeType },
         inspirationImages,
         tryOnPrompt
       );
-      setGeneratedImage(`data:image/jpeg;base64,${newImageBytes}`);
+      setGeneratedImage(newImageResult);
       setAppState(AppState.EDITING);
 
     } catch (e: any) {
@@ -316,9 +325,9 @@ const App: React.FC = () => {
   };
   
   const handleDownloadImage = () => {
-    if (!generatedImage) return;
+    if (!generatedImageUrl) return;
     const link = document.createElement('a');
-    link.href = generatedImage;
+    link.href = generatedImageUrl;
     link.download = 'design-irl-creation.jpeg';
     document.body.appendChild(link);
     link.click();
@@ -355,25 +364,23 @@ const App: React.FC = () => {
   );
 
   const renderWelcomeScreen = () => (
-    <div className="min-h-screen flex items-center justify-center bg-black p-4 text-center">
-      <div className="max-w-4xl w-full bg-white/5 backdrop-blur-xl p-8 sm:p-12 rounded-2xl shadow-lg border border-white/20">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black p-4 text-center">
+      <div className="max-w-4xl w-full p-8 sm:p-12">
         <h1 className="font-caveat text-8xl font-bold text-white mb-4">Design IRL</h1>
-        <p className="font-caveat text-3xl text-gray-300 mb-8">Your Pinterest board. Designed IRL.</p>
-        <p className="text-lg text-gray-400 mb-12 max-w-2xl mx-auto">
-          Unleash your creativity. Whether you're designing a room, editing a photo, or trying on a new style, our AI-powered tools bring your vision to life.
-        </p>
+        <p className="font-caveat text-3xl text-gray-300 mb-12">Your Pinterest board. Designed IRL.</p>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left mb-12">
-            <div className="bg-white/10 backdrop-blur-lg p-6 rounded-lg border border-white/20">
+            <div className="bg-[#111111] border border-gray-800 p-6 rounded-2xl">
                 <h3 className="font-bold text-white text-xl mb-2">Generate from Inspiration</h3>
-                <p className="text-gray-400">Combine multiple images to create entirely new room designs.</p>
+                <p className="text-gray-400">Create stunning product mockups, brand aesthetics, or unique room designs by fusing ideas from multiple images.</p>
             </div>
-            <div className="bg-white/10 backdrop-blur-lg p-6 rounded-lg border border-white/20">
+            <div className="bg-[#111111] border border-gray-800 p-6 rounded-2xl">
                 <h3 className="font-bold text-white text-xl mb-2">Edit an Image</h3>
-                <p className="text-gray-400">Select a single photo and modify it with simple text prompts.</p>
+                <p className="text-gray-400">Refine any image with simple text commands. Perfect for quick adjustments to your mockups and designs.</p>
             </div>
-            <div className="bg-white/10 backdrop-blur-lg p-6 rounded-lg border border-white/20">
+            <div className="bg-[#111111] border border-gray-800 p-6 rounded-2xl">
                 <h3 className="font-bold text-white text-xl mb-2">Virtual Try-On</h3>
-                <p className="text-gray-400">Upload your own photo and apply styles from Pinterest.</p>
+                <p className="text-gray-400">See it on you. Virtually try on clothes, accessories, ornaments, and more using your own photo and style inspiration.</p>
             </div>
         </div>
         <button
@@ -762,17 +769,17 @@ const App: React.FC = () => {
           {pathway === 'generate' ? 'Your Generated Room' : 'Edit Your Image'}
         </h2>
         
-        {generatedImage && (
+        {generatedImageUrl && (
           <div className="relative group mb-6 w-full max-w-4xl">
             <div className="rounded-lg shadow-lg overflow-hidden border border-gray-800">
               <img 
-                src={generatedImage} 
+                src={generatedImageUrl} 
                 alt="AI-generated or user-selected room" 
                 className="w-full max-h-[60vh] object-contain bg-black/50" 
               />
             </div>
             <div 
-              onClick={() => setViewingImage(generatedImage)}
+              onClick={() => setViewingImage(generatedImageUrl)}
               className="absolute top-4 left-4 p-2 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/80 z-20 cursor-pointer"
               title="View full screen"
             >
@@ -785,7 +792,7 @@ const App: React.FC = () => {
 
         <div className="w-full max-w-4xl bg-[#111111] border border-gray-800 p-6 rounded-2xl shadow-md mb-6">
            <p className="text-gray-300 font-semibold mb-2">Want to change something? Edit with AI.</p>
-          <form onSubmit={(e) => { e.preventDefault(); handleEditImage(); }} className="flex flex-col sm:flex-row gap-4">
+          <form onSubmit={(e) => { e.preventDefault(); handleEditImage(); }} className="flex flex-col sm:flex-row items-center gap-4">
             <input
               type="text"
               value={editPrompt}
@@ -800,7 +807,7 @@ const App: React.FC = () => {
           {error && <p className="mt-4 text-red-500 text-sm">{error}</p>}
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button 
                 onClick={handleDownloadImage}
                 className="bg-white text-black font-bold py-2 px-6 rounded-md hover:bg-gray-200 transition duration-300"
@@ -891,7 +898,6 @@ const App: React.FC = () => {
       </div>
     );
   };
-
 
   const renderContent = () => {
     switch (appState) {

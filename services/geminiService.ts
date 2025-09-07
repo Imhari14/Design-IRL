@@ -58,7 +58,7 @@ export const analyzeImage = async (apiKey: string, base64: string, mimeType: str
   return JSON.parse(jsonString) as TasteAnalysis;
 };
 
-export const generateRoom = async (apiKey: string, profile: TasteProfile, roomFunction: string): Promise<string> => {
+export const generateRoom = async (apiKey: string, profile: TasteProfile, roomFunction: string): Promise<{ base64: string, mimeType: string }> => {
   if (!apiKey) throw new Error("Gemini API key is required.");
   const ai = new GoogleGenAI({ apiKey });
 
@@ -80,7 +80,7 @@ export const generateRoom = async (apiKey: string, profile: TasteProfile, roomFu
     if (chunk.candidates && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
       for (const part of chunk.candidates[0].content.parts) {
         if (part.inlineData) {
-          return part.inlineData.data;
+          return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
         }
       }
     }
@@ -89,7 +89,7 @@ export const generateRoom = async (apiKey: string, profile: TasteProfile, roomFu
   throw new Error('Image generation failed to produce an image.');
 };
 
-export const editImage = async (apiKey: string, base64Image: string, userInstruction: string): Promise<string> => {
+export const editImage = async (apiKey: string, image: { base64: string, mimeType: string }, userInstruction: string): Promise<{ base64: string, mimeType: string }> => {
   if (!apiKey) throw new Error("Gemini API key is required.");
   const ai = new GoogleGenAI({ apiKey });
 
@@ -99,7 +99,7 @@ export const editImage = async (apiKey: string, base64Image: string, userInstruc
     model: 'gemini-2.5-flash-image-preview',
     contents: {
       parts: [
-        { inlineData: { data: base64Image, mimeType: 'image/jpeg' } },
+        { inlineData: { data: image.base64, mimeType: image.mimeType } },
         { text: prompt },
       ],
     },
@@ -112,7 +112,7 @@ export const editImage = async (apiKey: string, base64Image: string, userInstruc
     if (chunk.candidates && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
       for (const part of chunk.candidates[0].content.parts) {
         if (part.inlineData) {
-          return part.inlineData.data;
+          return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
         }
       }
     }
@@ -121,7 +121,7 @@ export const editImage = async (apiKey: string, base64Image: string, userInstruc
   throw new Error("Failed to edit image. No image was returned from the stream.");
 };
 
-export const virtualTryOn = async (apiKey: string, userImage: { base64: string, mimeType: string }, inspirationImages: { base64: string, mimeType: string }[], prompt: string): Promise<string> => {
+export const virtualTryOn = async (apiKey: string, userImage: { base64: string, mimeType: string }, inspirationImages: { base64: string, mimeType: string }[], prompt: string): Promise<{ base64: string, mimeType: string }> => {
   if (!apiKey) throw new Error("Gemini API key is required.");
   const ai = new GoogleGenAI({ apiKey });
 
@@ -143,7 +143,7 @@ export const virtualTryOn = async (apiKey: string, userImage: { base64: string, 
     if (chunk.candidates?.[0]?.content?.parts) {
       for (const part of chunk.candidates[0].content.parts) {
         if (part.inlineData) {
-          return part.inlineData.data;
+          return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
         }
       }
     }
