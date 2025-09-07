@@ -1,0 +1,7 @@
+{
+  "name": "Design IRL",
+  "description": "Your Pinterest board. Designed IRL. An AI-powered interior design tool that lets you discover, select, and fuse Pinterest-inspired aesthetics into unique, AI-generated room mockups.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
